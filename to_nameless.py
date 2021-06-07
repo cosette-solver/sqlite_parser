@@ -27,7 +27,8 @@ def get_parsed_tree(filename):
     return tree
 
 def pre_process_tree(query):
-    query += "\n"
+    if query[-1] != "\n":
+        query += "\n"
     query = re.sub("""(?!\()([^\s]+?\s+?(?:not\s)?like\s+?["'][^\s]+?["'])\s+?(?!\))""", r' (\1) ', query, flags = re.IGNORECASE)
     query = re.sub("""(?!\()([^\s]+?\s+?(?:not\s)?like\s*?["'][^\s]+?["'])\s*?(?!\))""", r' (\1) ', query, flags = re.IGNORECASE)
     query = re.sub("""(?!\()([^\s]+?\s+?(?:not\s)?like\s*?["']%?[\w\d\s]+?%?["'])\s*?(?!\))""", r' (\1) ', query, flags = re.IGNORECASE)
@@ -76,7 +77,18 @@ def to_nameless(input_sql, output_json):
             query_result = query_tree.to_nameless(schema)
             queries.append(query_result)
 
-    output = {"schema": schema, "queries": queries}
+    output_schema = []
+    for tab_name in schema:
+        types = []
+        primary = None
+        foreign = {}
+        for col_num, (col_name, [col_type, col_constraint]) in enumerate(schema[tab_name].items()):
+            types.append(col_type)
+            if col_constraint == ["primary", "key"]:
+                primary = col_num
+            # TODO: Handle foreign key constraints
+        output_schema.append({"types": types, "primary": primary, "foreign": foreign})
+    output = {"schemas": output_schema, "tables": queries}
     with open(output_json, "w+") as f:
         json.dump(output,f)
 
