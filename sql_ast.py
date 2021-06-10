@@ -117,7 +117,7 @@ class TableReference(TableOp):
     
     def to_nameless(self, schema):
         tbl_index = list(schema.keys()).index(self.name)
-        return {"Var": tbl_index}
+        return {"var": tbl_index}
 
         
 class JoinTable(TableOp):
@@ -259,12 +259,12 @@ class JoinTable(TableOp):
 #             op = "JOIN"
 #             return f"({self.left_tbl.to_nameless(schema)} {op} {self.right_tbl.to_nameless(schema)} {self.constraint.to_nameless(schema) if self.constraint else ''})"
         if "left" in self.join_op:
-            return {"OuterJoin": 
+            return {"outer_join":
                         [self.left_tbl.to_nameless(schema), 
                          self.right_tbl.to_nameless(schema), 
                          self.constraint.to_nameless(schema) if self.constraint else {}]}
         else:
-            return {"Join": 
+            return {"join":
                         [self.left_tbl.to_nameless(schema), 
                          self.right_tbl.to_nameless(schema)]}
     
@@ -553,21 +553,21 @@ class SelectStatement(TableOp):
         else:
             select_part = [col.to_nameless(schema) for col in self.columns]
 
-        to_return = {"Query": {
+        to_return = {"query": {
                             "select": select_part,
                             "from": self.subquery_tree.to_nameless(schema),
-                            "preds": self.where_tree.to_nameless(schema) if self.where_tree else {}
+                            "pred": self.where_tree.to_nameless(schema) if self.where_tree else {}
         }}
         if self.group_col:
-            to_return["Query"]["group"] = [col.to_nameless(schema) for col in self.group_col]
+            to_return["query"]["group"] = [col.to_nameless(schema) for col in self.group_col]
         if self.having_tree:
-            to_return["Query"]["having"] = self.having_tree.to_nameless(schema)
+            to_return["query"]["having"] = self.having_tree.to_nameless(schema)
         if self.order_cols:
-            to_return["Query"]["order"] = {}
-            to_return["Query"]["order"]["cols"] = [col.to_nameless(schema) for col in self.order_cols]
-            to_return["Query"]["order"]["direction"] = self.ordering_dir
+            to_return["query"]["order"] = {}
+            to_return["query"]["order"]["cols"] = [col.to_nameless(schema) for col in self.order_cols]
+            to_return["query"]["order"]["direction"] = self.ordering_dir
         if self.limit:
-            to_return["Query"]["limit"] = self.limit
+            to_return["query"]["limit"] = self.limit
         return to_return
             
 
@@ -620,7 +620,7 @@ class Column(ColOp):
     
     def to_nameless(self, schema):
 #         return "\"" + str(self.index) + "\""
-        return {"Col": [self.index]}
+        return {"col": self.index}
         
         
 class ConstantColumn(ColOp):
@@ -639,7 +639,7 @@ class ConstantColumn(ColOp):
     
     def to_nameless(self, schema):
 #         return self.to_rkt(schema)
-        return {"Value": [self.value]}
+        return {"op": [self.value, []]}
     
 class UnaryColumnOp(ColOp):
     def __init__(self, s_exp):
@@ -673,7 +673,7 @@ class UnaryColumnOp(ColOp):
     
     def to_nameless(self, schema):
 #         return self.op.upper() + "(" + ", ".join(["\"" + str(col.index) + "\""  for col in self.col_ops]) + ")"
-        return {"Op": [self.op, [col.to_nameless(schema) for col in self.col_ops]]}
+        return {"op": [self.op, [col.to_nameless(schema) for col in self.col_ops]]}
             
 class BinaryColumnOp(ColOp):
     def __init__(self, s_exp):
@@ -696,7 +696,7 @@ class BinaryColumnOp(ColOp):
     
     def to_nameless(self, schema):
 #         return self.left_col_op.to_nameless(schema) + " " + self.op + " " + self.right_col_op.to_nameless(schema)
-        return {"Op": [self.op, [self.left_col_op.to_nameless(schema), self.right_col_op.to_nameless(schema)]]}
+        return {"op": [self.op, [self.left_col_op.to_nameless(schema), self.right_col_op.to_nameless(schema)]]}
     
 
 class AllColumn(ColOp):
@@ -723,7 +723,7 @@ class AllColumn(ColOp):
 #         for index in range(len(table_schema)):
 #             to_return += f"\"{index}\" "
 #         return to_return[:-1]
-        to_return = [{"Col": [i]} for i in range(len(table_schema))]
+        to_return = [{"col": i} for i in range(len(table_schema))]
         return to_return
             
         
@@ -770,9 +770,9 @@ class JoinPredicate(PredicateOp):
     def to_nameless(self, schema):
 #         return self.left_pred_op.to_nameless(schema) + " " + self.op + " " + self.right_pred_op.to_nameless(schema)
         if self.op == "==" or self.op == "=":
-            return {"Eq": [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]}
+            return {"eq": [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]}
         else:
-            return {"Pred": [self.op, [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]]}
+            return {"pred": [self.op, [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]]}
 
 def find_ultimate_pred(s_exp):
     assert s_exp[0] == "expr"
@@ -807,9 +807,9 @@ class Predicate(PredicateOp):
     def to_nameless(self, schema):
 #         return self.left_pred_op.to_nameless(schema) + " " + self.op + " " + self.right_pred_op.to_nameless(schema) + " "
         if self.op == "==" or self.op == "=":
-            return {"Eq": [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]}
+            return {"eq": [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]}
         else:
-            return {"Pred": [self.op, [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]]}
+            return {"pred": [self.op, [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]]}
     
 class LikePredicate(Predicate):
     def __init__(self, s_exp):
@@ -838,7 +838,7 @@ class LikePredicate(Predicate):
         
     def to_nameless(self, schema):
 #         return self.left_pred_op.to_nameless(schema) + " LIKE " + self.pattern + " "
-        return {"Like": [self.left_pred_op.to_nameless(schema), self.pattern]}
+        return {"like": [self.left_pred_op.to_nameless(schema), self.pattern]}
             
 class AndPred(PredicateOp):
     def __init__(self, s_exp):
@@ -858,7 +858,7 @@ class AndPred(PredicateOp):
     
     def to_nameless(self, schema):
 #         return "(" + self.left_pred_op.to_nameless(schema) + " AND " + self.right_pred_op.to_nameless(schema) + ") "
-        return {"And": [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]}
+        return {"and": [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]}
         
 class OrPred(PredicateOp):
     def __init__(self, s_exp):
@@ -878,7 +878,7 @@ class OrPred(PredicateOp):
     
     def to_nameless(self, schema):
 #         return "(" + self.left_pred_op.to_nameless(schema) + " OR " + self.right_pred_op.to_nameless(schema) + ") "
-        return {"Or": [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]}
+        return {"or": [self.left_pred_op.to_nameless(schema), self.right_pred_op.to_nameless(schema)]}
         
 def NotPred(PredicateOp):
     def __init__(self, s_exp):
@@ -897,5 +897,5 @@ def NotPred(PredicateOp):
     
     def to_nameless(self, schema):
 #         return "(NOT " + self.pred_op.to_nameless(schema) + ")"
-        return {"Not": [self.pred_op.to_nameless(schema)]}
+        return {"not": self.pred_op.to_nameless(schema)}
  
